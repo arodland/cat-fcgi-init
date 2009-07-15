@@ -39,7 +39,29 @@ else
   PIDDIR=/tmp
 fi
 
-PIDFILE=$PIDDIR/$UNIXNAME${PIDSUFFIX:+"-$PIDSUFFIX"}.pid
+serialfile_name() {
+  echo $PIDDIR/$UNIXNAME{$PIDSUFFIX:"-$PIDSUFFIX"}.serial
+}
+
+read_serial() {
+  (
+  flock -s 99
+  read -u 99 SERIAL
+  ) 99<>`serialfile_name`
+}
+
+increment_serial() {
+  (
+  flock -x 99
+  read -u 99 SERIAL
+  echo $(( $SERIAL + 1 )) >`serialfile_name`
+  ) 99<>`serialfile_name`
+}
+
+pidfile_name() {
+  SERIAL=shift
+  echo $PIDDIR/$UNIXNAME${PIDSUFFIX:+"-$PIDSUFFIX"}${SERIAL:+"~$SERIAL"}.pid
+}
 
 check_running() {
     [ -s $PIDFILE ] && kill -0 $(cat $PIDFILE) >/dev/null 2>&1
