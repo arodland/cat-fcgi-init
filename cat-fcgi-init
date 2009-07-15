@@ -73,6 +73,15 @@ _start() {
   return 1
 }
 
+_stop() {
+  if [ "$1" = "old" ] ; then
+    PF="$PIDFILE"~
+  else
+    PF="$PIDFILE"
+  fi
+  start-stop-daemon --stop --user $USER --quiet --oknodo --pidfile $PF
+}
+
 start() {
     log_daemon_msg "Starting $APPNAME" $UNIXNAME
     if check_running; then
@@ -91,7 +100,7 @@ start() {
 stop() {
     log_daemon_msg "Stopping $APPNAME" $UNIXNAME
 
-    start-stop-daemon --stop --user $USER --quiet --oknodo --pidfile $PIDFILE
+    _stop
     log_end_msg $?
     return $?
 }
@@ -104,8 +113,18 @@ restart() {
         exit 1
     fi
 
-    start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE
-    _start
+    mv "$PIDFILE" "$PIDFILE"~
+    log_progress_msg "Starting new instance"
+
+    if ! _start ; then
+      log_failure_msg "Error starting new instance"
+      log_end_msg 1
+      mv "$PIDFILE"~ "$PIDFILE"
+      exit 1
+    fi
+
+    log_progress_msg "Stopping old instance"
+    _stop old
     log_end_msg $?
     return $?
 }
