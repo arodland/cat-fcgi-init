@@ -26,82 +26,59 @@ GROUP=myapp
 # them to step on each other's pidfile.
 PIDSUFFIX=
 
+# local::lib path, if you want to use it.
+LOCALLIB=
+
 if [ -f "/etc/default/"$UNIXNAME ]; then
-. "/etc/default/"$UNIXNAME
+    . "/etc/default/"$UNIXNAME
 fi
 
 if [ $(id -u) -eq 0 ] ; then
-  PIDDIR=/var/run/$UNIXNAME
-  mkdir $PIDDIR >/dev/null 2>&1
-  chown $USER:$GROUP $PIDDIR
-  chmod 775 $PIDDIR
+    PIDDIR=/var/run/$UNIXNAME
+    mkdir $PIDDIR >/dev/null 2>&1
+    chown $USER:$GROUP $PIDDIR
+    chmod 775 $PIDDIR
 else
-  PIDDIR=/tmp
+    PIDDIR=/tmp
 fi
 
-serialfile_name() {
-  echo $PIDDIR/$UNIXNAME{$PIDSUFFIX:"-$PIDSUFFIX"}.serial
-}
+PIDFILE=$PIDDIR/$UNIXNAME${PIDSUFFIX:+"-$PIDSUFFIX"}.pid
 
-read_serial() {
-  (
-  flock -s 99
-  read -u 99 SERIAL
-  ) 99<>`serialfile_name`
-}
-
-increment_serial() {
-  (
-  flock -x 99
-  read -u 99 SERIAL
-  echo $(( $SERIAL + 1 )) >`serialfile_name`
-  ) 99<>`serialfile_name`
-}
-
-pidfile_name() {
-  SERIAL=shift
-  echo $PIDDIR/$UNIXNAME${PIDSUFFIX:+"-$PIDSUFFIX"}${SERIAL:+"~$SERIAL"}.pid
-}
+if [ -n "$LOCALLIB" ] ; then
+    eval `perl -I"$LOCALLIB" -Mlocal::lib="$LOCALLIB"`
+fi
 
 check_running() {
     [ -s $PIDFILE ] && kill -0 $(cat $PIDFILE) >/dev/null 2>&1
 }
 
 check_compile() {
-  if [ -n "$USER" ] ; then
-    if su $USER -c "cd $APPDIR ; perl -Ilib -M$APPNAME -ce1" ; then
+    if [ -n "$USER" ] ; then
+        if su $USER -c "cd $APPDIR ; perl -Ilib -M$APPNAME -ce1" ; then
+            return 0
+        fi
+        return 1
+    else
+        if ( cd $APPDIR ; perl -Ilib -M$APPNAME -ce1 ) ; then
+            return 0
+        fi
         return 1
     fi
-    return 0
-  else
-    if ( cd $APPDIR ; perl -Ilib -M$APPNAME -ce1 ) ; then
-      return 1
-    fi
-    return 0
-  fi
 }
 
 _start() {
-  start-stop-daemon --start --quiet --pidfile $PIDFILE --chdir $APPDIR \
+    start-stop-daemon --start --quiet --pidfile $PIDFILE --chdir $APPDIR \
     ${USER:+"--chuid"} $USER ${GROUP:+"--group"} $GROUP --background \
-    --startas $APPDIR/script/${UNIXNAME}_fastcgi.pl -- -n $PROCS -l $SOCKET -p $PIDFILE
+    --startas $APPDIR/script/${UNIXNAME}_fastcgi.pl -- \ 
+    -n $PROCS -l $SOCKET -p $PIDFILE
 
-  for i in 1 2 3 4 5 ; do
-    sleep 1
-    if check_running ; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-_stop() {
-  if [ "$1" = "old" ] ; then
-    PF="$PIDFILE"~
-  else
-    PF="$PIDFILE"
-  fi
-  start-stop-daemon --stop --user $USER --quiet --oknodo --pidfile $PF
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        sleep 1
+        if check_running ; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 start() {
@@ -119,6 +96,12 @@ start() {
     return $?
 }
 
+_stop() {
+    start-stop-daemon --stop --user $USER --quiet --oknodo --pidfile $PIDFILE \
+    --retry TERM/5/TERM/30/KILL/30 \
+    || log_failure_message "It won't die!"
+}
+
 stop() {
     log_daemon_msg "Stopping $APPNAME" $UNIXNAME
 
@@ -129,24 +112,8 @@ stop() {
 
 restart() {
     log_daemon_msg "Restarting $APPNAME" $UNIXNAME
-    if check_compile ; then
-        log_failure_msg "Error detected; not restarting."
-        log_end_msg 1
-        exit 1
-    fi
 
-    mv "$PIDFILE" "$PIDFILE"~
-    log_progress_msg "Starting new instance"
-
-    if ! _start ; then
-      log_failure_msg "Error starting new instance"
-      log_end_msg 1
-      mv "$PIDFILE"~ "$PIDFILE"
-      exit 1
-    fi
-
-    log_progress_msg "Stopping old instance"
-    _stop old
+    check_compile && _stop && _start
     log_end_msg $?
     return $?
 }
@@ -155,15 +122,18 @@ restart() {
 case "$1" in
     start)
         start
-    ;;
+        ;;
     stop)
         stop
-    ;;
+        ;;
     restart|force-reload)
         restart
-    ;;
+        ;;
+    check|check-compile)
+        check_compile
+        ;;
     *)
-        echo $"Usage: $0 {start|stop|restart}"
+        echo $"Usage: $0 {start|stop|restart|check}"
         exit 1
 esac
 exit $?
