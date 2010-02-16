@@ -1,0 +1,13 @@
+This is in a bit of a shambles at the moment; I'll get it cleaned up soon.
+
+What this is is a script to manage a Catalyst app running as an external FastCGI
+process. The current "stable" version is a bourne sh script, "cat-fcgi-init" in
+the root. The very first revision imported is production-ready; the changes
+after that are deadend and don't work.
+
+I'm reimplementing as Perl, with the added feature of allowing zero-downtime
+restarts; however that's not nearly there yet.
+
+Also living here for now is Log::LSB::InitMsg, a prototype module for logging
+using the LSB-approved interface, with emphasis on working properly under Debian
+and Ubuntu.
