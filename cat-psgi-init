@@ -124,6 +124,14 @@ restart() {
     return $?
 }
 
+reload() {
+    log_daemon_msg "Reloading $APPNAME" $UNIXNAME
+
+    [ -s $PIDFILE ] && kill -HUP $(cat $PIDFILE) >/dev/null 2>&1
+    log_end_msg $?
+    return $?
+}
+
 # See how we were called.
 case "$1" in
     start)
@@ -132,14 +140,20 @@ case "$1" in
     stop)
         stop
         ;;
-    restart|force-reload)
+    restart)
         restart
+        ;;
+    reload)
+        reload
+        ;;
+    force-reload)
+        check_running && reload || restart
         ;;
     check|check-compile)
         check_compile
         ;;
     *)
-        echo $"Usage: $0 {start|stop|restart|check}"
+        echo $"Usage: $0 {start|stop|restart|reload|force-reload|check}"
         exit 1
 esac
 exit $?
