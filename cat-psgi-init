@@ -52,8 +52,12 @@ fi
 PERL5LIB="$APPDIR/lib"${PERL5LIB:+":"}$PERL5LIB
 export PERL5LIB
 
+getpid() {
+    awk '{ print $1 }' "$PIDFILE"
+}
+
 check_running() {
-    [ -s $PIDFILE ] && kill -0 $(cat $PIDFILE) >/dev/null 2>&1
+    [ -s $PIDFILE ] && kill -0 $(getpid) >/dev/null 2>&1
 }
 
 check_compile() {
@@ -127,7 +131,7 @@ restart() {
 reload() {
     log_daemon_msg "Reloading $APPNAME" $UNIXNAME
 
-    [ -s $PIDFILE ] && kill -HUP $(cat $PIDFILE) >/dev/null 2>&1
+    [ -s $PIDFILE ] && kill -HUP $(getpid) >/dev/null 2>&1
     log_end_msg $?
     return $?
 }
