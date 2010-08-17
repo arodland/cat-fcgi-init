@@ -80,7 +80,7 @@ _start() {
     --startas "$PLACKUP" -- \
     -MFile::Pid::Quick="$PIDFILE" \
     --listen "$SOCKET" ${PLACK_SERVER:+"-s"} $PLACK_SERVER $PLACK_SERVER_OPTS \
-    -- "$PSGI"
+    --app "$PSGI"
 
     for i in 1 2 3 4 5 6 7 8 9 10; do
         sleep 1
