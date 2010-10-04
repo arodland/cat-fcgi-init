@@ -1,5 +1,7 @@
 #!/bin/sh
 # Start a Catalyst app under FastCGI
+# Copyright (c) 2009-2010, Andrew Rodland
+# See LICENSE for redistribution conditions.
 #
 ### BEGIN INIT INFO
 # Provides: webapp
