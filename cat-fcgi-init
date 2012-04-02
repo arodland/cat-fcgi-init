@@ -68,7 +68,7 @@ check_compile() {
 _start() {
     start-stop-daemon --start --quiet --pidfile $PIDFILE --chdir $APPDIR \
     ${USER:+"--chuid"} $USER ${GROUP:+"--group"} $GROUP --background \
-    --startas $APPDIR/script/${UNIXNAME}_fastcgi.pl -- \ 
+    --startas $APPDIR/script/${UNIXNAME}_fastcgi.pl -- \
     -n $PROCS -l $SOCKET -p $PIDFILE
 
     for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -128,11 +128,14 @@ case "$1" in
     restart|force-reload)
         restart
         ;;
+    status)
+        status_of_proc $([ -s $PIDFILE ] && echo "-p $PIDFILE") perl-fcgi $APPNAME && exit 0 || exit $?
+        ;;
     check|check-compile)
         check_compile
         ;;
     *)
-        echo $"Usage: $0 {start|stop|restart|check}"
+        echo $"Usage: $0 {start|stop|status|restart|check}"
         exit 1
 esac
 exit $?
